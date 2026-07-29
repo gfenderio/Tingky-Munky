@@ -33,7 +33,7 @@ client.once('clientReady', () => {
             if (channel && channel.isTextBased()) {
                 try {
                     const messageOptions: any = {
-                        content: `Halo <@${targetUserId}>, ini reminder harianmu!`
+                        content: `<@${targetUserId}>`
                     };
                     
                     if (process.env.IMAGE_URL) {

@@ -24,24 +24,67 @@ const client = new Client({
 client.once('clientReady', () => {
     console.log(`Bot logged in as ${client.user?.tag}!`);
 
-    // Schedule the task for 11:50 AM every day
-    // The timezone is set to WIB (Asia/Jakarta)
+    // Reminder 1: Jam 11:50 WIB
     cron.schedule('50 11 * * *', async () => {
         try {
-            console.log("Executing scheduled task...");
+            console.log("Executing scheduled task 1 (11:50)...");
             const channel = await client.channels.fetch(channelId);
             
             if (channel && channel.isTextBased()) {
-                await (channel as TextChannel).send({
-                    content: `Halo <@${targetUserId}>, ini reminder harianmu!`,
-                    stickers: [stickerId]
-                });
-                console.log("Reminder sent successfully.");
-            } else {
-                console.error("Channel not found or is not a text channel.");
+                try {
+                    const messageOptions: any = {
+                        content: `Halo <@${targetUserId}>, ini reminder harianmu!`
+                    };
+                    
+                    if (process.env.IMAGE_URL) {
+                        messageOptions.files = [process.env.IMAGE_URL];
+                    } else if (stickerId) {
+                        messageOptions.stickers = [stickerId];
+                    }
+
+                    await (channel as TextChannel).send(messageOptions);
+                    console.log("Reminder 1 sent successfully.");
+                } catch (sendError: any) {
+                    console.error(`Gagal mengirim lampiran (Code: ${sendError.code}). Mengirim ulang teks saja...`);
+                    await (channel as TextChannel).send({
+                        content: `Halo <@${targetUserId}>, ini reminder harianmu!\n*(Catatan: Gambar atau Stiker gagal dimuat)*`
+                    });
+                }
             }
         } catch (error) {
-            console.error("Failed to send reminder:", error);
+            console.error("Failed to execute reminder 1:", error);
+        }
+    }, {
+        timezone: "Asia/Jakarta"
+    });
+
+    // Reminder 2: Jam 17:30 WIB
+    cron.schedule('30 17 * * *', async () => {
+        try {
+            console.log("Executing scheduled task 2 (17:30)...");
+            const channel = await client.channels.fetch(channelId);
+            
+            if (channel && channel.isTextBased()) {
+                try {
+                    const messageOptions: any = {};
+                    
+                    if (process.env.IMAGE_URL_2) {
+                        messageOptions.files = [process.env.IMAGE_URL_2];
+                    } else {
+                        messageOptions.content = "Waktunya beli eskrim!"; // Fallback jika gambar hilang
+                    }
+
+                    await (channel as TextChannel).send(messageOptions);
+                    console.log("Reminder 2 sent successfully.");
+                } catch (sendError: any) {
+                    console.error(`Gagal mengirim lampiran 2 (Code: ${sendError.code}). Mengirim ulang teks saja...`);
+                    await (channel as TextChannel).send({
+                        content: `<@${targetUserId}>\n*(Catatan: Gambar gagal dimuat)*`
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Failed to execute reminder 2:", error);
         }
     }, {
         timezone: "Asia/Jakarta"

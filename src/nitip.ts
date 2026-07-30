@@ -21,8 +21,15 @@ interface Titipan {
     userId: string;
     userName: string;
     pesanan: string;
+    harga: number;
     catatan: string;
     timestamp: string;
+}
+
+// === HELPER ===
+
+function formatRupiah(amount: number): string {
+    return 'Rp ' + amount.toLocaleString('id-ID');
 }
 
 interface Batch {
@@ -85,14 +92,17 @@ function buildMainEmbed(data: NitipData): EmbedBuilder {
         embed.setDescription('Belum ada yang nitip.');
     } else {
         let desc = '';
+        let totalHarga = 0;
         batch.orders.forEach((order, i) => {
-            desc += `**${i + 1}.** <@${order.userId}> — ${order.pesanan}`;
+            desc += `**${i + 1}.** <@${order.userId}> — ${order.pesanan} • **${formatRupiah(order.harga)}**`;
             if (order.catatan) {
                 desc += `\n   📝 ${order.catatan}`;
             }
             desc += '\n';
+            totalHarga += order.harga;
         });
         desc += `\n**Total: ${batch.orders.length} titipan**`;
+        desc += `\n💰 **Total Harga: ${formatRupiah(totalHarga)}**`;
         embed.setDescription(desc);
     }
 
@@ -174,7 +184,11 @@ export async function handleNitipModal(interaction: ModalSubmitInteraction): Pro
 
     const nama = interaction.fields.getTextInputValue('nitip_nama');
     const pesanan = interaction.fields.getTextInputValue('nitip_pesanan');
+    const hargaRaw = interaction.fields.getTextInputValue('nitip_harga');
     const catatan = interaction.fields.getTextInputValue('nitip_catatan') || '';
+
+    // Parse harga: hapus semua karakter non-digit
+    const harga = parseInt(hargaRaw.replace(/\D/g, '')) || 0;
 
     const data = loadData();
 
@@ -187,6 +201,7 @@ export async function handleNitipModal(interaction: ModalSubmitInteraction): Pro
         userId: interaction.user.id,
         userName: nama,
         pesanan: pesanan,
+        harga: harga,
         catatan: catatan,
         timestamp: new Date().toISOString()
     };
@@ -251,6 +266,14 @@ async function handleTambah(interaction: ButtonInteraction): Promise<void> {
         .setRequired(true)
         .setMaxLength(200);
 
+    const hargaInput = new TextInputBuilder()
+        .setCustomId('nitip_harga')
+        .setLabel('Harga (Rupiah)')
+        .setPlaceholder('Contoh: 15000')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true)
+        .setMaxLength(20);
+
     const catatanInput = new TextInputBuilder()
         .setCustomId('nitip_catatan')
         .setLabel('Catatan (opsional)')
@@ -262,6 +285,7 @@ async function handleTambah(interaction: ButtonInteraction): Promise<void> {
     modal.addComponents(
         new ActionRowBuilder<TextInputBuilder>().addComponents(namaInput),
         new ActionRowBuilder<TextInputBuilder>().addComponents(pesananInput),
+        new ActionRowBuilder<TextInputBuilder>().addComponents(hargaInput),
         new ActionRowBuilder<TextInputBuilder>().addComponents(catatanInput),
     );
 
@@ -288,7 +312,7 @@ async function handleHapusMenu(interaction: ButtonInteraction): Promise<void> {
 
     const options = data.currentBatch.orders.map((order, i) => ({
         label: `${order.userName} — ${order.pesanan}`.substring(0, 100),
-        description: order.catatan ? order.catatan.substring(0, 100) : 'Tanpa catatan',
+        description: `${formatRupiah(order.harga)}${order.catatan ? ' | ' + order.catatan : ''}`.substring(0, 100),
         value: i.toString(),
     }));
 
@@ -320,8 +344,10 @@ async function handleTutup(interaction: ButtonInteraction): Promise<void> {
     const embed = buildMainEmbed(data);
     const buttons = buildMainButtons(data);
 
+    const totalHarga = data.currentBatch.orders.reduce((sum, o) => sum + o.harga, 0);
+
     await interaction.reply({
-        content: `🔒 **Batch #${data.currentBatch.number} sudah DITUTUP!** Total ${data.currentBatch.orders.length} titipan.`,
+        content: `🔒 **Batch #${data.currentBatch.number} sudah DITUTUP!** Total ${data.currentBatch.orders.length} titipan — 💰 ${formatRupiah(totalHarga)}`,
         embeds: [embed],
         components: buttons,
     });

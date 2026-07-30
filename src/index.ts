@@ -29,6 +29,10 @@ client.on('interactionCreate', async (interaction: Interaction) => {
         await interaction.reply('https://klipy.com/gifs/dog-dance-brazil-dance');
     }
 
+    if (interaction.commandName === 'asik') {
+        await interaction.reply('ASIK LO BANG!!\nhttps://klipy.com/gifs/coach-justin-justalk');
+    }
+
     if (interaction.commandName === 'makan-siang') {
         const messageOptions: any = {
             content: `<@${targetUserId}>`
@@ -70,6 +74,10 @@ client.once('ready', async () => {
                     new SlashCommandBuilder()
                         .setName('makan-siang')
                         .setDescription('Menampilkan gambar makan siang 11:50')
+                        .toJSON(),
+                    new SlashCommandBuilder()
+                        .setName('asik')
+                        .setDescription('Menampilkan GIF Coach Justin')
                         .toJSON()
                 ];
 

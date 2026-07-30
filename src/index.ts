@@ -172,7 +172,7 @@ client.once('ready', async () => {
     async function sendReminder1(): Promise<void> {
         try {
             console.log("Executing scheduled task 1 (11:50)...");
-            const channel = await client.channels.fetch(channelId);
+            const channel = await client.channels.fetch(channelId!);
             
             if (channel && channel.isTextBased()) {
                 try {
@@ -210,7 +210,7 @@ client.once('ready', async () => {
     async function sendReminder2(): Promise<void> {
         try {
             console.log("Executing scheduled task 2 (17:30)...");
-            const channel = await client.channels.fetch(channelId);
+            const channel = await client.channels.fetch(channelId!);
             
             if (channel && channel.isTextBased()) {
                 try {

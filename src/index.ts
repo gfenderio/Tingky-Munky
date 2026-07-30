@@ -28,6 +28,25 @@ client.on('interactionCreate', async (interaction: Interaction) => {
     if (interaction.commandName === 'mung-joget') {
         await interaction.reply('https://klipy.com/gifs/dog-dance-brazil-dance');
     }
+
+    if (interaction.commandName === 'makan-siang') {
+        const messageOptions: any = {
+            content: `<@${targetUserId}>`
+        };
+        
+        if (process.env.IMAGE_URL) {
+            messageOptions.files = [process.env.IMAGE_URL];
+        } else if (stickerId) {
+            messageOptions.stickers = [stickerId];
+        }
+
+        try {
+            await interaction.reply(messageOptions);
+        } catch (error) {
+            console.error("Error responding to /makan-siang:", error);
+            await interaction.reply({ content: `<@${targetUserId}>\n*(Catatan: Gambar gagal dimuat)*`, ephemeral: true });
+        }
+    }
 });
 
 client.once('ready', async () => {
@@ -47,6 +66,10 @@ client.once('ready', async () => {
                     new SlashCommandBuilder()
                         .setName('mung-joget')
                         .setDescription('Menampilkan GIF Mung joget')
+                        .toJSON(),
+                    new SlashCommandBuilder()
+                        .setName('makan-siang')
+                        .setDescription('Menampilkan gambar makan siang 11:50')
                         .toJSON()
                 ];
 

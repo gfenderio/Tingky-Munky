@@ -6,23 +6,35 @@ import {
     ButtonInteraction 
 } from 'discord.js';
 
-// List sementara, nanti akan diupdate kalau list dari user sudah ada
-export let foodList = [
-    "Nasi Goreng", 
-    "Sate Ayam", 
-    "Nasi Padang", 
-    "Bakso", 
-    "Mie Ayam",
-    "Ayam Geprek",
-    "Pecel Lele",
-    "Soto Ayam",
-    "Ketoprak",
-    "Gado-gado"
+export const foodList = [
+    "nasi geprek murah meriah",
+    "nasi padang jereng",
+    "ketoprak coklat",
+    "mie ayam",
+    "soto",
+    "batagor gapake tahu jadi bagor",
+    "batagor pake tahu",
+    "pop es",
+    "somay",
+    "kebab israel",
+    "kebab bang aji pake sausnya aji",
+    "cimol kentang",
+    "cimol kentang tapi cimolnya aja",
+    "cimol kentang tapi kentangtingtangtingtung",
+    "papeda",
+    "cilor tana apid yang ditusuk",
+    "cilor yang dibenyek",
+    "es teh yang ijo",
+    "es teh yang ijo tapi udah luntur jadi merah",
+    "cireng yang bikin gilang mencret jadi gaikut main mecha chameleon",
+    "grabfood aja biar keren kaya mas shinwe",
+    "daging kodok dapur hociak",
+    "ayam penyet yang bannernya ai slop",
+    "es teh panas manis tawar"
 ];
 
 function getRandomFood(currentFood?: string): string {
     let newFood = currentFood;
-    // Pastikan hasil gacha tidak sama dengan yang sekarang (jika list > 1)
     if (foodList.length > 1) {
         while (newFood === currentFood) {
             const randomIndex = Math.floor(Math.random() * foodList.length);
@@ -35,7 +47,7 @@ function getRandomFood(currentFood?: string): string {
 }
 
 function buildGachaComponents(): ActionRowBuilder<ButtonBuilder> {
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    return new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
             .setCustomId('gacha_ganti')
             .setLabel('Gamau ah')
@@ -47,7 +59,6 @@ function buildGachaComponents(): ActionRowBuilder<ButtonBuilder> {
             .setEmoji('✅')
             .setStyle(ButtonStyle.Success),
     );
-    return row;
 }
 
 export async function handleMakanApaCommand(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -56,13 +67,13 @@ export async function handleMakanApaCommand(interaction: ChatInputCommandInterac
 
     await interaction.reply({
         content: `🎲 Hari ini makan **${food}** aja! Gimana?`,
-        components: [row]
+        components: [row],
+        ephemeral: true // Hanya terlihat oleh yang manggil
     });
 }
 
 export async function handleGachaButton(interaction: ButtonInteraction): Promise<void> {
     if (interaction.customId === 'gacha_ganti') {
-        // Ambil nama makanan dari pesan sebelumnya
         const currentMessage = interaction.message.content;
         const currentFoodMatch = currentMessage.match(/\*\*(.*?)\*\*/);
         const currentFood = currentFoodMatch ? currentFoodMatch[1] : undefined;
@@ -77,12 +88,17 @@ export async function handleGachaButton(interaction: ButtonInteraction): Promise
     } else if (interaction.customId === 'gacha_fix') {
         const currentMessage = interaction.message.content;
         const currentFoodMatch = currentMessage.match(/\*\*(.*?)\*\*/);
-        const currentFood = currentFoodMatch ? currentFoodMatch[1] : "ini";
+        const currentFood = currentFoodMatch ? currentFoodMatch[1] : "makanan misterius";
 
-        // Hapus tombol dan berikan konfirmasi
+        // Update pesan ephemeral (hilangkan tombol)
         await interaction.update({
-            content: `✅ Mantap! Selamat makan **${currentFood}** ya!`,
-            components: [] // Kosongkan tombol
+            content: `✅ Mantap! Pilihanmu sudah diumumkan.`,
+            components: [] 
         });
+
+        // Kirim pesan publik ke channel
+        if (interaction.channel) {
+            await interaction.channel.send(`Si <@${interaction.user.id}> mau beli **${currentFood}**`);
+        }
     }
 }

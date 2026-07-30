@@ -141,8 +141,35 @@ client.once('ready', async () => {
         console.error("Error registering slash commands:", error);
     }
 
-    // Reminder 1: Jam 11:50 WIB
-    cron.schedule('50 11 * * *', async () => {
+    // === SISTEM TRACKING HARIAN ===
+    const fs = await import('fs');
+    const pathMod = await import('path');
+    const TRACK_FILE = pathMod.join(__dirname, '..', 'data', 'sent_today.json');
+
+    function getTodayDate(): string {
+        return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }); // format YYYY-MM-DD
+    }
+
+    function loadTracker(): { date: string; reminder1: boolean; reminder2: boolean } {
+        try {
+            const dir = pathMod.dirname(TRACK_FILE);
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            if (fs.existsSync(TRACK_FILE)) {
+                const data = JSON.parse(fs.readFileSync(TRACK_FILE, 'utf-8'));
+                if (data.date === getTodayDate()) return data;
+            }
+        } catch (e) { /* ignore */ }
+        return { date: getTodayDate(), reminder1: false, reminder2: false };
+    }
+
+    function saveTracker(tracker: { date: string; reminder1: boolean; reminder2: boolean }): void {
+        const dir = pathMod.dirname(TRACK_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(TRACK_FILE, JSON.stringify(tracker, null, 2), 'utf-8');
+    }
+
+    // === FUNGSI KIRIM REMINDER ===
+    async function sendReminder1(): Promise<void> {
         try {
             console.log("Executing scheduled task 1 (11:50)...");
             const channel = await client.channels.fetch(channelId);
@@ -161,22 +188,26 @@ client.once('ready', async () => {
 
                     await (channel as TextChannel).send(messageOptions);
                     console.log("Reminder 1 sent successfully.");
+
+                    const tracker = loadTracker();
+                    tracker.reminder1 = true;
+                    saveTracker(tracker);
                 } catch (sendError: any) {
                     console.error(`Gagal mengirim lampiran (Code: ${sendError.code}). Mengirim ulang teks saja...`);
                     await (channel as TextChannel).send({
                         content: `Halo <@${targetUserId}>, ini reminder harianmu!\n*(Catatan: Gambar atau Stiker gagal dimuat)*`
                     });
+                    const tracker = loadTracker();
+                    tracker.reminder1 = true;
+                    saveTracker(tracker);
                 }
             }
         } catch (error) {
             console.error("Failed to execute reminder 1:", error);
         }
-    }, {
-        timezone: "Asia/Jakarta"
-    });
+    }
 
-    // Reminder 2: Jam 17:30 WIB
-    cron.schedule('30 17 * * *', async () => {
+    async function sendReminder2(): Promise<void> {
         try {
             console.log("Executing scheduled task 2 (17:30)...");
             const channel = await client.channels.fetch(channelId);
@@ -188,26 +219,53 @@ client.once('ready', async () => {
                     if (process.env.IMAGE_URL_2) {
                         messageOptions.files = [process.env.IMAGE_URL_2];
                     } else {
-                        messageOptions.content = "Waktunya beli eskrim!"; // Fallback jika gambar hilang
+                        messageOptions.content = "Waktunya beli eskrim!";
                     }
 
                     await (channel as TextChannel).send(messageOptions);
                     console.log("Reminder 2 sent successfully.");
+
+                    const tracker = loadTracker();
+                    tracker.reminder2 = true;
+                    saveTracker(tracker);
                 } catch (sendError: any) {
                     console.error(`Gagal mengirim lampiran 2 (Code: ${sendError.code}). Mengirim ulang teks saja...`);
                     await (channel as TextChannel).send({
                         content: `<@${targetUserId}>\n*(Catatan: Gambar gagal dimuat)*`
                     });
+                    const tracker = loadTracker();
+                    tracker.reminder2 = true;
+                    saveTracker(tracker);
                 }
             }
         } catch (error) {
             console.error("Failed to execute reminder 2:", error);
         }
-    }, {
-        timezone: "Asia/Jakarta"
-    });
+    }
+
+    // === CATCH-UP: Cek apakah ada reminder yang kelewat hari ini ===
+    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const tracker = loadTracker();
+
+    // Kalau sekarang sudah lewat 11:50 tapi reminder 1 belum terkirim hari ini
+    if ((currentHour > 11 || (currentHour === 11 && currentMinute >= 50)) && !tracker.reminder1) {
+        console.log("[Catch-up] Reminder 1 (11:50) belum terkirim hari ini! Mengirim sekarang...");
+        await sendReminder1();
+    }
+
+    // Kalau sekarang sudah lewat 17:30 tapi reminder 2 belum terkirim hari ini
+    if ((currentHour > 17 || (currentHour === 17 && currentMinute >= 30)) && !tracker.reminder2) {
+        console.log("[Catch-up] Reminder 2 (17:30) belum terkirim hari ini! Mengirim sekarang...");
+        await sendReminder2();
+    }
+
+    // === CRON JOBS ===
+    cron.schedule('50 11 * * *', async () => { await sendReminder1(); }, { timezone: "Asia/Jakarta" });
+    cron.schedule('30 17 * * *', async () => { await sendReminder2(); }, { timezone: "Asia/Jakarta" });
     
-    console.log("Cron job scheduled for 11:50 AM WIB.");
+    console.log("Cron job scheduled for 11:50 AM and 17:30 PM WIB.");
 
     // Heartbeat: log setiap 5 menit supaya Discloud tidak nge-freeze bot
     setInterval(() => {

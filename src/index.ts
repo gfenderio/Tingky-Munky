@@ -208,6 +208,21 @@ client.once('ready', async () => {
     });
     
     console.log("Cron job scheduled for 11:50 AM WIB.");
+
+    // Heartbeat: log setiap 5 menit supaya Discloud tidak nge-freeze bot
+    setInterval(() => {
+        console.log(`[Heartbeat] Bot alive — ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}`);
+    }, 5 * 60 * 1000);
+});
+
+// Keep-alive HTTP server supaya Discloud tahu bot masih aktif
+import http from 'http';
+const server = http.createServer((req, res) => {
+    res.writeHead(200);
+    res.end('Tingky Munky is alive!');
+});
+server.listen(process.env.PORT || 3000, () => {
+    console.log('Keep-alive server running.');
 });
 
 client.login(token);

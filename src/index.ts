@@ -1,6 +1,7 @@
 import { Client, GatewayIntentBits, TextChannel, REST, Routes, SlashCommandBuilder, Interaction } from 'discord.js';
 import cron from 'node-cron';
 import dotenv from 'dotenv';
+import { handleNitipCommand, handleNitipButton, handleNitipModal, handleNitipSelect } from './nitip';
 
 dotenv.config();
 
@@ -21,38 +22,64 @@ const client = new Client({
     ]
 });
 
-// Listener untuk slash command
+// Listener untuk semua interaction (slash command, button, modal, select menu)
 client.on('interactionCreate', async (interaction: Interaction) => {
-    if (!interaction.isChatInputCommand()) return;
 
-    if (interaction.commandName === 'mung-joget') {
-        await interaction.reply('https://klipy.com/gifs/dog-dance-brazil-dance');
-    }
-
-    if (interaction.commandName === 'asik') {
-        await interaction.reply({
-            content: 'LO ASIK BANG',
-            files: ['./assets/asik.png']
-        });
-    }
-
-    if (interaction.commandName === 'makan-siang') {
-        const messageOptions: any = {
-            content: `<@${targetUserId}>`
-        };
-        
-        if (process.env.IMAGE_URL) {
-            messageOptions.files = [process.env.IMAGE_URL];
-        } else if (stickerId) {
-            messageOptions.stickers = [stickerId];
+    // === SLASH COMMANDS ===
+    if (interaction.isChatInputCommand()) {
+        if (interaction.commandName === 'mung-joget') {
+            await interaction.reply('https://klipy.com/gifs/dog-dance-brazil-dance');
         }
 
-        try {
-            await interaction.reply(messageOptions);
-        } catch (error) {
-            console.error("Error responding to /makan-siang:", error);
-            await interaction.reply({ content: `<@${targetUserId}>\n*(Catatan: Gambar gagal dimuat)*`, ephemeral: true });
+        if (interaction.commandName === 'asik') {
+            await interaction.reply({
+                content: 'LO ASIK BANG',
+                files: ['./assets/asik.png']
+            });
         }
+
+        if (interaction.commandName === 'makan-siang') {
+            const messageOptions: any = {
+                content: `<@${targetUserId}>`
+            };
+            
+            if (process.env.IMAGE_URL) {
+                messageOptions.files = [process.env.IMAGE_URL];
+            } else if (stickerId) {
+                messageOptions.stickers = [stickerId];
+            }
+
+            try {
+                await interaction.reply(messageOptions);
+            } catch (error) {
+                console.error("Error responding to /makan-siang:", error);
+                await interaction.reply({ content: `<@${targetUserId}>\n*(Catatan: Gambar gagal dimuat)*`, ephemeral: true });
+            }
+        }
+
+        if (interaction.commandName === 'nitip') {
+            await handleNitipCommand(interaction);
+        }
+
+        return;
+    }
+
+    // === BUTTON INTERACTIONS ===
+    if (interaction.isButton() && interaction.customId.startsWith('nitip_')) {
+        await handleNitipButton(interaction);
+        return;
+    }
+
+    // === MODAL SUBMIT ===
+    if (interaction.isModalSubmit() && interaction.customId === 'nitip_modal') {
+        await handleNitipModal(interaction);
+        return;
+    }
+
+    // === SELECT MENU ===
+    if (interaction.isStringSelectMenu() && interaction.customId === 'nitip_hapus_select') {
+        await handleNitipSelect(interaction);
+        return;
     }
 });
 
@@ -81,7 +108,11 @@ client.once('ready', async () => {
                     new SlashCommandBuilder()
                         .setName('asik')
                         .setDescription('Menampilkan GIF Coach Justin')
-                        .toJSON()
+                        .toJSON(),
+                    new SlashCommandBuilder()
+                        .setName('nitip')
+                        .setDescription('Buka panel nitip — tambah, lihat, hapus titipan')
+                        .toJSON(),
                 ];
 
                 console.log('Started refreshing application (/) commands.');

@@ -97,7 +97,7 @@ export async function handleGachaButton(interaction: ButtonInteraction): Promise
         });
 
         // Kirim pesan publik ke channel
-        if (interaction.channel) {
+        if (interaction.channel && 'send' in interaction.channel) {
             await interaction.channel.send(`Si <@${interaction.user.id}> mau beli **${currentFood}**`);
         }
     }

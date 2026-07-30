@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, TextChannel } from 'discord.js';
+import { Client, GatewayIntentBits, TextChannel, REST, Routes, SlashCommandBuilder, Interaction } from 'discord.js';
 import cron from 'node-cron';
 import dotenv from 'dotenv';
 
@@ -21,8 +21,46 @@ const client = new Client({
     ]
 });
 
-client.once('clientReady', () => {
+// Listener untuk slash command
+client.on('interactionCreate', async (interaction: Interaction) => {
+    if (!interaction.isChatInputCommand()) return;
+
+    if (interaction.commandName === 'mung-joget') {
+        await interaction.reply('https://klipy.com/gifs/dog-dance-brazil-dance');
+    }
+});
+
+client.once('ready', async () => {
     console.log(`Bot logged in as ${client.user?.tag}!`);
+
+    // Mendaftarkan Slash Command ke Server (Guild)
+    try {
+        const channel = await client.channels.fetch(channelId);
+        if (channel && channel.isTextBased() && 'guildId' in channel) {
+            const guildId = (channel as any).guildId;
+            const clientId = client.user?.id;
+            
+            if (guildId && clientId) {
+                const rest = new REST({ version: '10' }).setToken(token);
+                
+                const commands = [
+                    new SlashCommandBuilder()
+                        .setName('mung-joget')
+                        .setDescription('Menampilkan GIF Mung joget')
+                        .toJSON()
+                ];
+
+                console.log('Started refreshing application (/) commands.');
+                await rest.put(
+                    Routes.applicationGuildCommands(clientId, guildId),
+                    { body: commands },
+                );
+                console.log('Successfully reloaded application (/) commands.');
+            }
+        }
+    } catch (error) {
+        console.error("Error registering slash commands:", error);
+    }
 
     // Reminder 1: Jam 11:50 WIB
     cron.schedule('50 11 * * *', async () => {

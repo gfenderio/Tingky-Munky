@@ -30,7 +30,10 @@ client.on('interactionCreate', async (interaction: Interaction) => {
     }
 
     if (interaction.commandName === 'asik') {
-        await interaction.reply('ASIK LO BANG!!\nhttps://klipy.com/gifs/coach-justin-justalk');
+        await interaction.reply({
+            content: 'LO ASIK BANG',
+            files: ['./assets/asik.png']
+        });
     }
 
     if (interaction.commandName === 'makan-siang') {

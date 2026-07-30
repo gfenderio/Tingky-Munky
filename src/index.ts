@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits, TextChannel, REST, Routes, SlashCommandBuild
 import cron from 'node-cron';
 import dotenv from 'dotenv';
 import { handleNitipCommand, handleNitipButton, handleNitipModal, handleNitipSelect } from './nitip';
+import { handleMakanApaCommand, handleGachaButton } from './gacha';
 
 dotenv.config();
 
@@ -61,12 +62,21 @@ client.on('interactionCreate', async (interaction: Interaction) => {
             await handleNitipCommand(interaction);
         }
 
+        if (interaction.commandName === 'makan-apa') {
+            await handleMakanApaCommand(interaction);
+        }
+
         return;
     }
 
     // === BUTTON INTERACTIONS ===
     if (interaction.isButton() && interaction.customId.startsWith('nitip_')) {
         await handleNitipButton(interaction);
+        return;
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('gacha_')) {
+        await handleGachaButton(interaction);
         return;
     }
 
@@ -112,6 +122,10 @@ client.once('ready', async () => {
                     new SlashCommandBuilder()
                         .setName('nitip')
                         .setDescription('Buka panel nitip — tambah, lihat, hapus titipan')
+                        .toJSON(),
+                    new SlashCommandBuilder()
+                        .setName('makan-apa')
+                        .setDescription('Gacha makanan random buat makan siang')
                         .toJSON(),
                 ];
 

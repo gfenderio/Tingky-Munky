@@ -53,20 +53,6 @@
 
 ---
 
-## ⚡ Fitur
-
-| Fitur | Deskripsi |
-|-------|-----------|
-| ⏰ **Cron Reminder** | Pengingat otomatis harian jam 11:50 & 17:30 WIB |
-| 🕌 **Jumatan** | Pengingat Jumatan khusus hari Jumat jam 11:45 WIB |
-| 📦 **Sistem Nitip** | Panel interaktif untuk titip beli makanan dengan tombol & modal |
-| 🎲 **Gacha Makan** | Acak pilihan makan siang dengan tombol reroll |
-| 💃 **Slash Commands** | `/mung-joget`, `/asik`, `/makan-siang`, `/makan-apa`, `/nitip` |
-| 💾 **JSON Persistence** | Data titipan tersimpan meskipun bot restart |
-| 💓 **Keep-Alive** | Heartbeat & HTTP server anti-freeze di hosting gratisan |
-
----
-
 <div align="center">
 
 *Eh-Oh! 👋*

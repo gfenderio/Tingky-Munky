@@ -150,7 +150,7 @@ client.once('ready', async () => {
         return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }); // format YYYY-MM-DD
     }
 
-    function loadTracker(): { date: string; reminder1: boolean; reminder2: boolean } {
+    function loadTracker(): { date: string; reminder1: boolean; reminder2: boolean; reminderJumatan: boolean } {
         try {
             const dir = pathMod.dirname(TRACK_FILE);
             if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -159,17 +159,30 @@ client.once('ready', async () => {
                 if (data.date === getTodayDate()) return data;
             }
         } catch (e) { /* ignore */ }
-        return { date: getTodayDate(), reminder1: false, reminder2: false };
+        return { date: getTodayDate(), reminder1: false, reminder2: false, reminderJumatan: false };
     }
 
-    function saveTracker(tracker: { date: string; reminder1: boolean; reminder2: boolean }): void {
+    function saveTracker(tracker: { date: string; reminder1: boolean; reminder2: boolean; reminderJumatan: boolean }): void {
         const dir = pathMod.dirname(TRACK_FILE);
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(TRACK_FILE, JSON.stringify(tracker, null, 2), 'utf-8');
     }
 
+    function isFriday(): boolean {
+        const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+        return now.getDay() === 5; // 5 = Jumat
+    }
+
     // === FUNGSI KIRIM REMINDER ===
     async function sendReminder1(): Promise<void> {
+        // Skip hari Jumat
+        if (isFriday()) {
+            console.log("Hari Jumat, skip reminder 1 (makan siang).");
+            const tracker = loadTracker();
+            tracker.reminder1 = true;
+            saveTracker(tracker);
+            return;
+        }
         try {
             console.log("Executing scheduled task 1 (11:50)...");
             const channel = await client.channels.fetch(channelId!);
@@ -243,11 +256,38 @@ client.once('ready', async () => {
         }
     }
 
+    // === FUNGSI KIRIM JUMATAN ===
+    async function sendJumatan(): Promise<void> {
+        try {
+            console.log("Executing Jumatan reminder (11:45)...");
+            const channel = await client.channels.fetch(channelId!);
+            
+            if (channel && channel.isTextBased()) {
+                await (channel as TextChannel).send({
+                    files: ['./assets/jumatan.jpg']
+                });
+                console.log("Jumatan reminder sent successfully.");
+
+                const tracker = loadTracker();
+                tracker.reminderJumatan = true;
+                saveTracker(tracker);
+            }
+        } catch (error) {
+            console.error("Failed to send Jumatan reminder:", error);
+        }
+    }
+
     // === CATCH-UP: Cek apakah ada reminder yang kelewat hari ini ===
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     const tracker = loadTracker();
+
+    // Jumat: cek Jumatan (11:45)
+    if (isFriday() && (currentHour > 11 || (currentHour === 11 && currentMinute >= 45)) && !tracker.reminderJumatan) {
+        console.log("[Catch-up] Jumatan (11:45) belum terkirim hari ini! Mengirim sekarang...");
+        await sendJumatan();
+    }
 
     // Kalau sekarang sudah lewat 11:50 tapi reminder 1 belum terkirim hari ini
     if ((currentHour > 11 || (currentHour === 11 && currentMinute >= 50)) && !tracker.reminder1) {
@@ -262,10 +302,11 @@ client.once('ready', async () => {
     }
 
     // === CRON JOBS ===
+    cron.schedule('45 11 * * 5', async () => { await sendJumatan(); }, { timezone: "Asia/Jakarta" }); // Jumat 11:45
     cron.schedule('50 11 * * *', async () => { await sendReminder1(); }, { timezone: "Asia/Jakarta" });
     cron.schedule('30 17 * * *', async () => { await sendReminder2(); }, { timezone: "Asia/Jakarta" });
     
-    console.log("Cron job scheduled for 11:50 AM and 17:30 PM WIB.");
+    console.log("Cron job scheduled for 11:45 (Jumat), 11:50, and 17:30 WIB.");
 
     // Heartbeat: log setiap 5 menit supaya Discloud tidak nge-freeze bot
     setInterval(() => {

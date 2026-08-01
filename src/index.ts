@@ -173,11 +173,16 @@ client.once('ready', async () => {
         return now.getDay() === 5; // 5 = Jumat
     }
 
+    function isSunday(): boolean {
+        const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+        return now.getDay() === 0; // 0 = Minggu
+    }
+
     // === FUNGSI KIRIM REMINDER ===
     async function sendReminder1(): Promise<void> {
-        // Skip hari Jumat
-        if (isFriday()) {
-            console.log("Hari Jumat, skip reminder 1 (makan siang).");
+        // Skip hari Minggu dan Jumat
+        if (isSunday() || isFriday()) {
+            console.log(`Hari ${isSunday() ? 'Minggu' : 'Jumat'}, skip reminder 1 (makan siang).`);
             const tracker = loadTracker();
             tracker.reminder1 = true;
             saveTracker(tracker);
@@ -221,6 +226,14 @@ client.once('ready', async () => {
     }
 
     async function sendReminder2(): Promise<void> {
+        // Skip hari Minggu
+        if (isSunday()) {
+            console.log("Hari Minggu, skip reminder 2 (eskrim).");
+            const tracker = loadTracker();
+            tracker.reminder2 = true;
+            saveTracker(tracker);
+            return;
+        }
         try {
             console.log("Executing scheduled task 2 (17:30)...");
             const channel = await client.channels.fetch(channelId!);

@@ -23,9 +23,20 @@ const client = new Client({
     ]
 });
 
+// === GLOBAL ERROR HANDLERS (anti-crash) ===
+process.on('unhandledRejection', (error) => {
+    console.error('[Anti-Crash] Unhandled Rejection:', error);
+});
+process.on('uncaughtException', (error) => {
+    console.error('[Anti-Crash] Uncaught Exception:', error);
+});
+client.on('error', (error) => {
+    console.error('[Anti-Crash] Client Error:', error);
+});
+
 // Listener untuk semua interaction (slash command, button, modal, select menu)
 client.on('interactionCreate', async (interaction: Interaction) => {
-
+  try {
     // === SLASH COMMANDS ===
     if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'mung-joget') {
@@ -54,7 +65,7 @@ client.on('interactionCreate', async (interaction: Interaction) => {
                 await interaction.reply(messageOptions);
             } catch (error) {
                 console.error("Error responding to /makan-siang:", error);
-                await interaction.reply({ content: `<@${targetUserId}>\n*(Catatan: Gambar gagal dimuat)*`, ephemeral: true });
+                await interaction.reply({ content: `<@${targetUserId}>\n*(Catatan: Gambar gagal dimuat)*`, ephemeral: true }).catch(() => {});
             }
         }
 
@@ -91,6 +102,9 @@ client.on('interactionCreate', async (interaction: Interaction) => {
         await handleNitipSelect(interaction);
         return;
     }
+  } catch (error) {
+    console.error('[Anti-Crash] Interaction error:', error);
+  }
 });
 
 client.once('ready', async () => {

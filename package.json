@@ -2,9 +2,9 @@
   "name": "tingky-munky",
   "version": "1.0.0",
   "description": "Tingky Munky Discord Bot",
-  "main": "dist/index.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node dist/index.js"
+    "start": "node index.js"
   },
   "dependencies": {
     "discord.js": "^14.27.0",

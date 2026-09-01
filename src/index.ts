@@ -20,7 +20,11 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-    ]
+    ],
+    rest: {
+        timeout: 60000,
+        retries: 5
+    }
 });
 
 // === GLOBAL ERROR HANDLERS (anti-crash) ===

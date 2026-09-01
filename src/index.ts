@@ -192,6 +192,21 @@ client.once('ready', async () => {
         return now.getDay() === 0; // 0 = Minggu
     }
 
+    // === RETRY HELPER ===
+    async function retry<T>(fn: () => Promise<T>, maxAttempts: number = 5, delayMs: number = 15000): Promise<T> {
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                return await fn();
+            } catch (error: any) {
+                console.error(`[Retry] Attempt ${attempt}/${maxAttempts} failed: ${error.code || error.message}`);
+                if (attempt === maxAttempts) throw error;
+                console.log(`[Retry] Waiting ${delayMs / 1000}s before next attempt...`);
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+            }
+        }
+        throw new Error('Retry failed');
+    }
+
     // === FUNGSI KIRIM REMINDER ===
     async function sendReminder1(): Promise<void> {
         // Skip hari Minggu dan Jumat
@@ -204,10 +219,10 @@ client.once('ready', async () => {
         }
         try {
             console.log("Executing scheduled task 1 (11:50)...");
-            const channel = await client.channels.fetch(channelId!);
-            
-            if (channel && channel.isTextBased()) {
-                try {
+            await retry(async () => {
+                const channel = await client.channels.fetch(channelId!);
+                
+                if (channel && channel.isTextBased()) {
                     const messageOptions: any = {
                         content: `<@${targetUserId}>`
                     };
@@ -219,23 +234,15 @@ client.once('ready', async () => {
                     }
 
                     await (channel as TextChannel).send(messageOptions);
-                    console.log("Reminder 1 sent successfully.");
-
-                    const tracker = loadTracker();
-                    tracker.reminder1 = true;
-                    saveTracker(tracker);
-                } catch (sendError: any) {
-                    console.error(`Gagal mengirim lampiran (Code: ${sendError.code}). Mengirim ulang teks saja...`);
-                    await (channel as TextChannel).send({
-                        content: `Halo <@${targetUserId}>, ini reminder harianmu!\n*(Catatan: Gambar atau Stiker gagal dimuat)*`
-                    });
-                    const tracker = loadTracker();
-                    tracker.reminder1 = true;
-                    saveTracker(tracker);
                 }
-            }
+            });
+            console.log("Reminder 1 sent successfully.");
+
+            const tracker = loadTracker();
+            tracker.reminder1 = true;
+            saveTracker(tracker);
         } catch (error) {
-            console.error("Failed to execute reminder 1:", error);
+            console.error("Failed to execute reminder 1 after all retries:", error);
         }
     }
 
@@ -250,10 +257,10 @@ client.once('ready', async () => {
         }
         try {
             console.log("Executing scheduled task 2 (17:30)...");
-            const channel = await client.channels.fetch(channelId!);
-            
-            if (channel && channel.isTextBased()) {
-                try {
+            await retry(async () => {
+                const channel = await client.channels.fetch(channelId!);
+                
+                if (channel && channel.isTextBased()) {
                     const messageOptions: any = {};
                     
                     if (process.env.IMAGE_URL_2) {
@@ -263,23 +270,15 @@ client.once('ready', async () => {
                     }
 
                     await (channel as TextChannel).send(messageOptions);
-                    console.log("Reminder 2 sent successfully.");
-
-                    const tracker = loadTracker();
-                    tracker.reminder2 = true;
-                    saveTracker(tracker);
-                } catch (sendError: any) {
-                    console.error(`Gagal mengirim lampiran 2 (Code: ${sendError.code}). Mengirim ulang teks saja...`);
-                    await (channel as TextChannel).send({
-                        content: `<@${targetUserId}>\n*(Catatan: Gambar gagal dimuat)*`
-                    });
-                    const tracker = loadTracker();
-                    tracker.reminder2 = true;
-                    saveTracker(tracker);
                 }
-            }
+            });
+            console.log("Reminder 2 sent successfully.");
+
+            const tracker = loadTracker();
+            tracker.reminder2 = true;
+            saveTracker(tracker);
         } catch (error) {
-            console.error("Failed to execute reminder 2:", error);
+            console.error("Failed to execute reminder 2 after all retries:", error);
         }
     }
 
@@ -287,20 +286,22 @@ client.once('ready', async () => {
     async function sendJumatan(): Promise<void> {
         try {
             console.log("Executing Jumatan reminder (11:45)...");
-            const channel = await client.channels.fetch(channelId!);
-            
-            if (channel && channel.isTextBased()) {
-                await (channel as TextChannel).send({
-                    files: ['./assets/jumatan.jpg']
-                });
-                console.log("Jumatan reminder sent successfully.");
+            await retry(async () => {
+                const channel = await client.channels.fetch(channelId!);
+                
+                if (channel && channel.isTextBased()) {
+                    await (channel as TextChannel).send({
+                        files: ['./assets/jumatan.jpg']
+                    });
+                }
+            });
+            console.log("Jumatan reminder sent successfully.");
 
-                const tracker = loadTracker();
-                tracker.reminderJumatan = true;
-                saveTracker(tracker);
-            }
+            const tracker = loadTracker();
+            tracker.reminderJumatan = true;
+            saveTracker(tracker);
         } catch (error) {
-            console.error("Failed to send Jumatan reminder:", error);
+            console.error("Failed to send Jumatan reminder after all retries:", error);
         }
     }
 

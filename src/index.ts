@@ -1,10 +1,34 @@
 import { Client, GatewayIntentBits, TextChannel, REST, Routes, SlashCommandBuilder, Interaction } from 'discord.js';
 import cron from 'node-cron';
 import dotenv from 'dotenv';
+import dns from 'node:dns';
+import { Agent, setGlobalDispatcher } from 'undici';
 import { handleNitipCommand, handleNitipButton, handleNitipModal, handleNitipSelect } from './nitip';
 import { handleMakanApaCommand, handleGachaButton } from './gacha';
+import { dataFile, assetFile, resolveAssetPath } from './paths';
 
 dotenv.config();
+
+// === PERBAIKAN UND_ERR_CONNECT_TIMEOUT ===
+// Error `Connect Timeout Error (attempted address: discord.com:443, timeout: 10000ms)`
+// datang dari fase CONNECT-nya undici, bukan dari timeout request discord.js.
+// Opsi `rest.timeout` TIDAK menyentuh angka 10 detik itu — harus lewat Agent undici.
+//
+// 1. Utamakan IPv4. Container Discloud sering tidak punya rute IPv6, tapi Node
+//    mencoba alamat IPv6 duluan lalu menggantung sampai timeout.
+try {
+    dns.setDefaultResultOrder('ipv4first');
+} catch { /* Node lama tidak punya API ini */ }
+
+// 2. Naikkan connect timeout 10s -> 60s, dan pakai keep-alive supaya koneksi
+//    yang sudah jadi dipakai ulang (mayoritas request tidak connect ulang).
+const discordAgent = new Agent({
+    connect: { timeout: 60_000 },
+    connectTimeout: 60_000,
+    keepAliveTimeout: 30_000,
+    keepAliveMaxTimeout: 120_000,
+});
+setGlobalDispatcher(discordAgent);
 
 const token = process.env.DISCORD_TOKEN;
 const channelId = process.env.CHANNEL_ID;
@@ -22,8 +46,9 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
     ],
     rest: {
-        timeout: 60000,
-        retries: 5
+        timeout: 60000,   // batas satu request
+        retries: 5,       // ulang otomatis untuk error 5xx / timeout
+        agent: discordAgent
     }
 });
 
@@ -50,7 +75,7 @@ client.on('interactionCreate', async (interaction: Interaction) => {
         if (interaction.commandName === 'asik') {
             await interaction.reply({
                 content: 'LO ASIK BANG',
-                files: ['./assets/asik.png']
+                files: [assetFile('asik.png')]
             });
         }
 
@@ -60,7 +85,7 @@ client.on('interactionCreate', async (interaction: Interaction) => {
             };
             
             if (process.env.IMAGE_URL) {
-                messageOptions.files = [process.env.IMAGE_URL];
+                messageOptions.files = [resolveAssetPath(process.env.IMAGE_URL)];
             } else if (stickerId) {
                 messageOptions.stickers = [stickerId];
             }
@@ -162,7 +187,7 @@ client.once('ready', async () => {
     // === SISTEM TRACKING HARIAN ===
     const fs = await import('fs');
     const pathMod = await import('path');
-    const TRACK_FILE = pathMod.join(__dirname, '..', 'data', 'sent_today.json');
+    const TRACK_FILE = dataFile('sent_today.json');
 
     function getTodayDate(): string {
         return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }); // format YYYY-MM-DD
@@ -232,7 +257,7 @@ client.once('ready', async () => {
                     };
                     
                     if (process.env.IMAGE_URL) {
-                        messageOptions.files = [process.env.IMAGE_URL];
+                        messageOptions.files = [resolveAssetPath(process.env.IMAGE_URL)];
                     } else if (stickerId) {
                         messageOptions.stickers = [stickerId];
                     }
@@ -268,7 +293,7 @@ client.once('ready', async () => {
                     const messageOptions: any = {};
                     
                     if (process.env.IMAGE_URL_2) {
-                        messageOptions.files = [process.env.IMAGE_URL_2];
+                        messageOptions.files = [resolveAssetPath(process.env.IMAGE_URL_2)];
                     } else {
                         messageOptions.content = "Waktunya beli eskrim!";
                     }
@@ -295,7 +320,7 @@ client.once('ready', async () => {
                 
                 if (channel && channel.isTextBased()) {
                     await (channel as TextChannel).send({
-                        files: ['./assets/jumatan.jpg']
+                        files: [assetFile('jumatan.jpg')]
                     });
                 }
             });

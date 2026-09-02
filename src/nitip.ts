@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { dataFile } from './paths';
 import {
     ActionRowBuilder,
     ButtonBuilder,
@@ -44,7 +45,7 @@ interface NitipData {
 
 // === FILE PERSISTENCE ===
 
-const DATA_FILE = path.join(__dirname, '..', 'data', 'nitip.json');
+const DATA_FILE = dataFile('nitip.json');
 
 function ensureDataDir(): void {
     const dir = path.dirname(DATA_FILE);

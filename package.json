@@ -4,11 +4,15 @@
   "description": "Tingky Munky Discord Bot",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "build": "npx --yes esbuild@0.25.0 src/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=index.js --external:discord.js --external:node-cron --external:dotenv --external:undici",
+    "pack": "node scripts/pack.mjs",
+    "deploy": "npm run build && npm run pack"
   },
   "dependencies": {
     "discord.js": "^14.27.0",
     "dotenv": "^17.4.2",
-    "node-cron": "^4.6.0"
+    "node-cron": "^4.6.0",
+    "undici": "^6.27.0"
   }
 }

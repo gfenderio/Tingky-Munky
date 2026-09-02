@@ -26,25 +26,57 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 var import_discord3 = require("discord.js");
 var import_node_cron = __toESM(require("node-cron"));
 var import_dotenv = __toESM(require("dotenv"));
+var import_node_dns = __toESM(require("node:dns"));
+var import_undici = require("undici");
 
 // src/nitip.ts
+var fs2 = __toESM(require("fs"));
+var path2 = __toESM(require("path"));
+
+// src/paths.ts
 var fs = __toESM(require("fs"));
 var path = __toESM(require("path"));
+function findAppRoot() {
+  let dir = __dirname;
+  for (let i = 0; i < 5; i++) {
+    if (fs.existsSync(path.join(dir, "package.json"))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return process.cwd();
+}
+var APP_ROOT = findAppRoot();
+function dataFile(name) {
+  const dir = path.join(APP_ROOT, "data");
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return path.join(dir, name);
+}
+function assetFile(name) {
+  return path.join(APP_ROOT, "assets", name);
+}
+function resolveAssetPath(value) {
+  if (/^https?:\/\//i.test(value)) return value;
+  if (path.isAbsolute(value)) return value;
+  return path.resolve(APP_ROOT, value);
+}
+
+// src/nitip.ts
 var import_discord = require("discord.js");
 function formatRupiah(amount) {
   return "Rp " + amount.toLocaleString("id-ID");
 }
-var DATA_FILE = path.join(__dirname, "..", "data", "nitip.json");
+var DATA_FILE = dataFile("nitip.json");
 function ensureDataDir() {
-  const dir = path.dirname(DATA_FILE);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  const dir = path2.dirname(DATA_FILE);
+  if (!fs2.existsSync(dir)) {
+    fs2.mkdirSync(dir, { recursive: true });
   }
 }
 function loadData() {
   ensureDataDir();
-  if (fs.existsSync(DATA_FILE)) {
-    const raw = fs.readFileSync(DATA_FILE, "utf-8");
+  if (fs2.existsSync(DATA_FILE)) {
+    const raw = fs2.readFileSync(DATA_FILE, "utf-8");
     return JSON.parse(raw);
   }
   const defaultData = {
@@ -59,7 +91,7 @@ function loadData() {
 }
 function saveData(data) {
   ensureDataDir();
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
+  fs2.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
 }
 function buildMainEmbed(data) {
   const batch = data.currentBatch;
@@ -332,6 +364,17 @@ async function handleGachaButton(interaction) {
 // src/index.ts
 var import_http = __toESM(require("http"));
 import_dotenv.default.config();
+try {
+  import_node_dns.default.setDefaultResultOrder("ipv4first");
+} catch {
+}
+var discordAgent = new import_undici.Agent({
+  connect: { timeout: 6e4 },
+  connectTimeout: 6e4,
+  keepAliveTimeout: 3e4,
+  keepAliveMaxTimeout: 12e4
+});
+(0, import_undici.setGlobalDispatcher)(discordAgent);
 var token = process.env.DISCORD_TOKEN;
 var channelId = process.env.CHANNEL_ID;
 var targetUserId = process.env.TARGET_USER_ID;
@@ -347,7 +390,10 @@ var client = new import_discord3.Client({
   ],
   rest: {
     timeout: 6e4,
-    retries: 5
+    // batas satu request
+    retries: 5,
+    // ulang otomatis untuk error 5xx / timeout
+    agent: discordAgent
   }
 });
 process.on("unhandledRejection", (error) => {
@@ -368,7 +414,7 @@ client.on("interactionCreate", async (interaction) => {
       if (interaction.commandName === "asik") {
         await interaction.reply({
           content: "LO ASIK BANG",
-          files: ["./assets/asik.png"]
+          files: [assetFile("asik.png")]
         });
       }
       if (interaction.commandName === "makan-siang") {
@@ -376,7 +422,7 @@ client.on("interactionCreate", async (interaction) => {
           content: `<@${targetUserId}>`
         };
         if (process.env.IMAGE_URL) {
-          messageOptions.files = [process.env.IMAGE_URL];
+          messageOptions.files = [resolveAssetPath(process.env.IMAGE_URL)];
         } else if (stickerId) {
           messageOptions.stickers = [stickerId];
         }
@@ -444,18 +490,18 @@ client.once("ready", async () => {
   } catch (error) {
     console.error("Error registering slash commands:", error);
   }
-  const fs2 = await import("fs");
+  const fs3 = await import("fs");
   const pathMod = await import("path");
-  const TRACK_FILE = pathMod.join(__dirname, "..", "data", "sent_today.json");
+  const TRACK_FILE = dataFile("sent_today.json");
   function getTodayDate() {
     return (/* @__PURE__ */ new Date()).toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
   }
   function loadTracker() {
     try {
       const dir = pathMod.dirname(TRACK_FILE);
-      if (!fs2.existsSync(dir)) fs2.mkdirSync(dir, { recursive: true });
-      if (fs2.existsSync(TRACK_FILE)) {
-        const data = JSON.parse(fs2.readFileSync(TRACK_FILE, "utf-8"));
+      if (!fs3.existsSync(dir)) fs3.mkdirSync(dir, { recursive: true });
+      if (fs3.existsSync(TRACK_FILE)) {
+        const data = JSON.parse(fs3.readFileSync(TRACK_FILE, "utf-8"));
         if (data.date === getTodayDate()) return data;
       }
     } catch (e) {
@@ -464,8 +510,8 @@ client.once("ready", async () => {
   }
   function saveTracker(tracker2) {
     const dir = pathMod.dirname(TRACK_FILE);
-    if (!fs2.existsSync(dir)) fs2.mkdirSync(dir, { recursive: true });
-    fs2.writeFileSync(TRACK_FILE, JSON.stringify(tracker2, null, 2), "utf-8");
+    if (!fs3.existsSync(dir)) fs3.mkdirSync(dir, { recursive: true });
+    fs3.writeFileSync(TRACK_FILE, JSON.stringify(tracker2, null, 2), "utf-8");
   }
   function isFriday() {
     const now2 = new Date((/* @__PURE__ */ new Date()).toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
@@ -483,7 +529,7 @@ client.once("ready", async () => {
         console.error(`[Retry] Attempt ${attempt}/${maxAttempts} failed: ${error.code || error.message}`);
         if (attempt === maxAttempts) throw error;
         console.log(`[Retry] Waiting ${delayMs / 1e3}s before next attempt...`);
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        await new Promise((resolve2) => setTimeout(resolve2, delayMs));
       }
     }
     throw new Error("Retry failed");
@@ -505,7 +551,7 @@ client.once("ready", async () => {
             content: `<@${targetUserId}>`
           };
           if (process.env.IMAGE_URL) {
-            messageOptions.files = [process.env.IMAGE_URL];
+            messageOptions.files = [resolveAssetPath(process.env.IMAGE_URL)];
           } else if (stickerId) {
             messageOptions.stickers = [stickerId];
           }
@@ -535,7 +581,7 @@ client.once("ready", async () => {
         if (channel && channel.isTextBased()) {
           const messageOptions = {};
           if (process.env.IMAGE_URL_2) {
-            messageOptions.files = [process.env.IMAGE_URL_2];
+            messageOptions.files = [resolveAssetPath(process.env.IMAGE_URL_2)];
           } else {
             messageOptions.content = "Waktunya beli eskrim!";
           }
@@ -557,7 +603,7 @@ client.once("ready", async () => {
         const channel = await client.channels.fetch(channelId);
         if (channel && channel.isTextBased()) {
           await channel.send({
-            files: ["./assets/jumatan.jpg"]
+            files: [assetFile("jumatan.jpg")]
           });
         }
       });

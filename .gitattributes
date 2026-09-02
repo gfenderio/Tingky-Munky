@@ -1,0 +1,6 @@
+# Discloud membaca discloud.config baris per baris; CR di akhir baris bisa
+# ikut terbaca sebagai bagian nilai. Paksa LF untuk semua berkas teks.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.zip binary

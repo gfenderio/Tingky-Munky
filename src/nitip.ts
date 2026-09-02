@@ -54,11 +54,23 @@ function ensureDataDir(): void {
     }
 }
 
+let memoryCache: NitipData | null = null;
+
 function loadData(): NitipData {
+    if (memoryCache) {
+        return memoryCache;
+    }
     ensureDataDir();
     if (fs.existsSync(DATA_FILE)) {
-        const raw = fs.readFileSync(DATA_FILE, 'utf-8');
-        return JSON.parse(raw);
+        try {
+            const raw = fs.readFileSync(DATA_FILE, 'utf-8');
+            if (raw.trim()) {
+                memoryCache = JSON.parse(raw);
+                return memoryCache!;
+            }
+        } catch (err) {
+            console.error('[Nitip] Corrupted or empty nitip.json detected, resetting to default:', err);
+        }
     }
     // Default: belum ada batch
     const defaultData: NitipData = {
@@ -68,13 +80,19 @@ function loadData(): NitipData {
             orders: []
         }
     };
+    memoryCache = defaultData;
     saveData(defaultData);
     return defaultData;
 }
 
 function saveData(data: NitipData): void {
-    ensureDataDir();
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    memoryCache = data;
+    try {
+        ensureDataDir();
+        fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+        console.error('[Nitip] Warning: Failed to write nitip.json (disk full or write error), using in-memory state:', err);
+    }
 }
 
 // === EMBED & BUTTONS ===
